@@ -52,11 +52,35 @@
             margin: 5px 0;
             border-radius: 5px;
         }
+        .sair {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: red;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+
+    <div class="container" id="login-container">
+        <h2>Login</h2>
+        <input type="text" id="usuario" placeholder="Digite seu nome">
+        <button onclick="fazerLogin()">Entrar</button>
+    </div>
+
+    <div class="container" id="simulador" style="display: none;">
+        <button class="sair" onclick="sair()">Sair</button>
+        <h2>Empresa X </h2>
+        <p>Usuário: <span id="usuarioLogado"></span></p>
+
+
     <div class="container">
-        <h2>Simulador de Custo de Produção</h2>
+        <h3>Simulador de Custo de Produção</h3>
         <label>Combustível (R$):</label>
         <input type="number" id="combustivel" placeholder="Digite o valor">
         
@@ -71,27 +95,110 @@
         
         <button onclick="calcularCusto()">Calcular Custo Total</button>
         
-        <p id="resultado"></p>
-        
         <h3>Histórico de Cálculos</h3>
         <div id="historico"></div>
+
+        <p id="resultado"></p>
+        <h3>Média dos Custos</h3>
+        <p id="media">Média: R$ </p>
+
     </div>
     
     <script>
+
+function fazerLogin() {
+    let usuario = document.getElementById('usuario').value.trim();
+    if (usuario === '') {
+        alert('Por favor, digite seu nome.');
+        return;
+    }
+
+    // Limpa todos os dados associados ao usuário anterior
+    localStorage.removeItem('usuario');
+    localStorage.removeItem('historico');
+    localStorage.removeItem(`${usuario}_custoTotal`);
+    localStorage.removeItem(`${usuario}_media`);
+
+    // Define o novo usuário e salva seus dados
+    localStorage.setItem('usuario', usuario);
+    document.getElementById('usuarioLogado').innerText = usuario;
+    document.getElementById('login-container').style.display = 'none';
+    document.getElementById('simulador').style.display = 'block';
+
+    // Exibe o histórico do novo usuário
+    exibirHistorico();
+
+    // Carrega os dados de custo total e média para o novo usuário
+    carregarValoresCusto();
+}
+
+
+
+function carregarValoresCusto() {
+    let usuario = localStorage.getItem('usuario'); // Pega o nome do usuário logado
+    if (!usuario) return; // Se não houver usuário logado, não faz nada
+
+    // Recupera os valores específicos para o usuário
+    let custoTotal = localStorage.getItem(`${usuario}_custoTotal`);
+    let media = localStorage.getItem(`${usuario}_media`);
+
+    // Exibe os valores se estiverem salvos
+    if (custoTotal) {
+        document.getElementById('resultado').innerText = `Custo Total da Produção: R$ ${custoTotal}`;
+    }
+    if (media) {
+        document.getElementById('media').innerText = `Média: R$ ${media}`;
+    }
+}
+
+function sair() {
+    let usuario = localStorage.getItem('usuario');
+    if (usuario) {
+        // Remove os dados do usuário do localStorage
+        localStorage.removeItem(`${usuario}_custoTotal`);
+        localStorage.removeItem(`${usuario}_media`);
+    }
+
+    // Remove o nome do usuário
+    localStorage.removeItem('usuario');
+    document.getElementById('login-container').style.display = 'block';
+    document.getElementById('simulador').style.display = 'none';
+}
+
         function calcularCusto() {
-            let combustivel = parseFloat(document.getElementById('combustivel').value) || 0;
-            let manutencao = parseFloat(document.getElementById('manutencao').value) || 0;
-            let horas = parseFloat(document.getElementById('horas').value) || 0;
-            let valorHora = parseFloat(document.getElementById('valorHora').value) || 0;
-            
-            let custoHoras = horas * valorHora;
-            let custoTotal = combustivel + manutencao + custoHoras;
-            
-            let resultadoTexto = `Custo Total da Produção: R$ ${custoTotal.toFixed(2)}`;
-            document.getElementById('resultado').innerText = resultadoTexto;
-            
-            salvarHistorico(combustivel, manutencao, horas, valorHora, custoTotal);
-        }
+    let combustivel = parseFloat(document.getElementById('combustivel').value) || 0;
+    let manutencao = parseFloat(document.getElementById('manutencao').value) || 0;
+    let horas = parseFloat(document.getElementById('horas').value) || 0;
+    let valorHora = parseFloat(document.getElementById('valorHora').value) || 0;
+    
+    let custoHoras = horas * valorHora;
+    let custoTotal = combustivel + manutencao + custoHoras;
+    
+    // Exibe o custo total
+    let resultadoTexto = `Custo Total da Produção: R$ ${custoTotal.toFixed(2)}`;
+    document.getElementById('resultado').innerText = resultadoTexto;
+    
+    // Salva o histórico e o custo total no localStorage
+    salvarHistorico(combustivel, manutencao, horas, valorHora, custoTotal);
+
+    // Salva o custo total e a média para o usuário atual
+    salvarValoresCusto(custoTotal);
+}
+
+function salvarValoresCusto(custoTotal) {
+    let usuario = localStorage.getItem('usuario'); // Pega o nome do usuário logado
+    if (!usuario) return; // Se não houver usuário logado, não faz nada
+
+    let historico = JSON.parse(localStorage.getItem('historico')) || [];
+    let somaCustos = historico.reduce((total, item) => total + item.custoTotal, 0);
+    let media = historico.length > 0 ? somaCustos / historico.length : 0;
+
+    // Salva o custo total e a média para o usuário no localStorage
+    localStorage.setItem(`${usuario}_custoTotal`, custoTotal.toFixed(2));
+    localStorage.setItem(`${usuario}_media`, media.toFixed(2));
+}
+
+
         
         function salvarHistorico(combustivel, manutencao, horas, valorHora, custoTotal) {
             let historico = JSON.parse(localStorage.getItem('historico')) || [];
@@ -108,28 +215,46 @@
             localStorage.setItem('historico', JSON.stringify(historico));
             exibirHistorico();
         }
+
+
         
         function exibirHistorico() {
-            let historico = JSON.parse(localStorage.getItem('historico')) || [];
-            let historicoDiv = document.getElementById('historico');
-            historicoDiv.innerHTML = '';
-            
-            historico.forEach((item, index) => {
-                let div = document.createElement('div');
-                div.classList.add('historico-item');
-                div.innerHTML = `
-                    <strong>Cálculo ${index + 1}:</strong><br>
-                    Combustível: R$ ${item.combustivel.toFixed(2)}<br>
-                    Manutenção: R$ ${item.manutencao.toFixed(2)}<br>
-                    Horas Trabalhadas: ${item.horas}h x R$ ${item.valorHora.toFixed(2)}/h<br>
-                    <strong>Total: R$ ${item.custoTotal.toFixed(2)}</strong>
-                `;
-                historicoDiv.appendChild(div);
-            });
-        }
-        
-        window.onload = exibirHistorico;
+    let historico = JSON.parse(localStorage.getItem('historico')) || [];
+    let historicoDiv = document.getElementById('historico');
+    historicoDiv.innerHTML = '';
+    
+    historico.forEach((item, index) => {
+        let div = document.createElement('div');
+        div.classList.add('historico-item');
+        div.innerHTML = `
+            <strong>Cálculo ${index + 1}:</strong><br>
+            Combustível: R$ ${item.combustivel.toFixed(2)}<br>
+            Manutenção: R$ ${item.manutencao.toFixed(2)}<br>
+            Horas Trabalhadas: ${item.horas}h x R$ ${item.valorHora.toFixed(2)}/h<br>
+            <strong>Total: R$ ${item.custoTotal.toFixed(2)}</strong>
+        `;
+        historicoDiv.appendChild(div);
+    });
+
+    // Atualiza a média
+    resultado();  // Chamando a função resultado após exibir o histórico
+}
+
+        window.onload = function() {
+    exibirHistorico(); // Atualiza a exibição do histórico
+};
+function resultado() {
+    let historico = JSON.parse(localStorage.getItem('historico')) || [];
+    if (historico.length === 0) {
+        document.getElementById('media').innerText = 'Média: R$ 0,00';
+        return;
+    }
+    let somaCustos = historico.reduce((total, item) => total + item.custoTotal, 0);
+    let media = somaCustos / historico.length;
+
+    document.getElementById('media').innerText = `Média: R$ ${media.toFixed(2)}`;
+    console.log('A média é ' + media);
+};
     </script>
 </body>
 </html>
-
